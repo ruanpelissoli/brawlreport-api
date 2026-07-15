@@ -2,10 +2,22 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
+// setStoreEnv sets the required data-store variables so tests can exercise
+// the Brawl Stars API side of Load() in isolation. t.Setenv restores the
+// previous values automatically.
+func setStoreEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("MONGO_URI", "mongodb://localhost:27017")
+	t.Setenv("CLICKHOUSE_ADDR", "localhost:9000")
+	t.Setenv("CLICKHOUSE_USER", "brawlreport")
+}
+
 func TestLoadMissingTokens(t *testing.T) {
+	setStoreEnv(t)
 	os.Unsetenv("BS_API_TOKENS")
 
 	_, err := Load()
@@ -14,7 +26,23 @@ func TestLoadMissingTokens(t *testing.T) {
 	}
 }
 
+func TestLoadMissingStoreVars(t *testing.T) {
+	t.Setenv("BS_API_TOKENS", "tok")
+	os.Unsetenv("MONGO_URI")
+	os.Unsetenv("CLICKHOUSE_ADDR")
+	os.Unsetenv("CLICKHOUSE_USER")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when data-store variables are not set, got nil")
+	}
+	if !strings.Contains(err.Error(), "MONGO_URI") {
+		t.Errorf("expected error to name the missing variables, got: %v", err)
+	}
+}
+
 func TestLoadEmptyTokenList(t *testing.T) {
+	setStoreEnv(t)
 	os.Setenv("BS_API_TOKENS", "  ,  ,  ")
 	defer os.Unsetenv("BS_API_TOKENS")
 
@@ -25,6 +53,7 @@ func TestLoadEmptyTokenList(t *testing.T) {
 }
 
 func TestLoadSingleToken(t *testing.T) {
+	setStoreEnv(t)
 	os.Setenv("BS_API_TOKENS", "my-test-token")
 	defer os.Unsetenv("BS_API_TOKENS")
 
@@ -38,6 +67,7 @@ func TestLoadSingleToken(t *testing.T) {
 }
 
 func TestLoadMultipleTokens(t *testing.T) {
+	setStoreEnv(t)
 	os.Setenv("BS_API_TOKENS", "token1, token2 , token3")
 	defer os.Unsetenv("BS_API_TOKENS")
 
@@ -54,6 +84,7 @@ func TestLoadMultipleTokens(t *testing.T) {
 }
 
 func TestLoadDefaults(t *testing.T) {
+	setStoreEnv(t)
 	os.Setenv("BS_API_TOKENS", "tok")
 	defer os.Unsetenv("BS_API_TOKENS")
 	os.Unsetenv("BS_API_BASE_URL")
@@ -80,6 +111,7 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadInvalidRate(t *testing.T) {
+	setStoreEnv(t)
 	os.Setenv("BS_API_TOKENS", "tok")
 	os.Setenv("BS_API_RATE_PER_TOKEN", "not-a-number")
 	defer os.Unsetenv("BS_API_TOKENS")
@@ -92,6 +124,7 @@ func TestLoadInvalidRate(t *testing.T) {
 }
 
 func TestLoadNegativeRate(t *testing.T) {
+	setStoreEnv(t)
 	os.Setenv("BS_API_TOKENS", "tok")
 	os.Setenv("BS_API_RATE_PER_TOKEN", "-5")
 	defer os.Unsetenv("BS_API_TOKENS")

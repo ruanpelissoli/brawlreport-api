@@ -1,3 +1,17 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/vendor/
+/bin/
+
+# Go test cache
+testdata/
+
 # Logs
 logs
 *.log
